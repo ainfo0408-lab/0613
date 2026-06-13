@@ -21,6 +21,8 @@ ksl_data = []
 firebase_connected = False
 selected_word_idx = 0
 correct_start_time = None # 정답 유지 시작 시간
+ksl_thankyou_tap_count = 0  # 감사합니다 수형 터치 횟수
+ksl_thankyou_last_touch = False  # 이전 프레임의 터치 여부
 cap = None
 
 # 한글 출력 헬퍼 함수
@@ -124,8 +126,11 @@ def get_finger_states(hand_landmarks):
 
 # 수형 판정 규칙 알고리즘
 def check_gesture(word_id, multi_hand_landmarks):
+    global ksl_thankyou_tap_count, ksl_thankyou_last_touch
     if not multi_hand_landmarks:
-        return False
+        # 손이 사라졌을 때는 이전 터치 여부를 리셋
+        ksl_thankyou_last_touch = False
+        return ksl_thankyou_tap_count >= 2
         
     hand_count = len(multi_hand_landmarks)
     
@@ -133,7 +138,8 @@ def check_gesture(word_id, multi_hand_landmarks):
     # 양손이 모두 감지되어야 하고, 양손의 거리(손바닥 중심 9번 관절 기준)가 가까워야 하며, 손가락들이 펴진 상태여야 함 (Tapping)
     if word_id == "ksl_thankyou":
         if hand_count < 2:
-            return False
+            ksl_thankyou_last_touch = False
+            return ksl_thankyou_tap_count >= 2
         h1 = multi_hand_landmarks[0].landmark
         h2 = multi_hand_landmarks[1].landmark
         # 두 손의 중심(9번 관절: 중지 기저) 거리 측정
@@ -144,7 +150,14 @@ def check_gesture(word_id, multi_hand_landmarks):
         
         # 양손 모두 손가락들이 펼쳐져 있고 두 손의 거리가 가까울 때
         both_open = (i1 and m1) and (i2 and m2)
-        return both_open and dist < 0.35
+        is_touching = both_open and dist < 0.35
+        
+        # 터치 순간 엣지 감지 (안 닿아있다가 닿는 순간에만 카운트 1 증가)
+        if is_touching and not ksl_thankyou_last_touch:
+            ksl_thankyou_tap_count += 1
+            
+        ksl_thankyou_last_touch = is_touching
+        return ksl_thankyou_tap_count >= 2
 
     # 단일 손 판정 규칙 (2개 손 중 하나라도 규칙을 만족하면 정답)
     for hand_landmarks in multi_hand_landmarks:
@@ -307,6 +320,16 @@ def main():
                 canvas = draw_hangul_text(canvas, f"단어: {curr_word['word']}", (375, 30), 30, (255, 255, 255))
                 canvas = draw_hangul_text(canvas, f"카테고리: {curr_word['category']}", (375, 80), 16, (150, 255, 150))
                 
+                # 감사합니다 단어 학습 중인 경우 터치 카운트 수치 시각적으로 출력
+                if curr_word['id'] == "ksl_thankyou":
+                    canvas = draw_hangul_text(
+                        canvas, 
+                        f"터치 카운트: {min(ksl_thankyou_tap_count, 2)} / 2", 
+                        (530, 80), 
+                        16, 
+                        (255, 255, 100)
+                    )
+                
                 # 설명글 출력
                 canvas = draw_hangul_text(canvas, "동작 설명:", (375, 120), 18, (200, 200, 200))
                 desc_lines = wrap_text(curr_word['description'], limit=21)
@@ -377,6 +400,8 @@ def main():
                     if elapsed >= 1.5:
                         selected_word_idx = (selected_word_idx + 1) % len(ksl_data)
                         correct_start_time = None
+                        ksl_thankyou_tap_count = 0
+                        ksl_thankyou_last_touch = False
                 else:
                     # 정답이 아닐 경우 유지시간 타이머 리셋
                     correct_start_time = None
@@ -417,6 +442,8 @@ def main():
                 current_state = STATE_LEARNING
                 selected_word_idx = 0
                 correct_start_time = None
+                ksl_thankyou_tap_count = 0
+                ksl_thankyou_last_touch = False
             elif key == ord('2'):
                 current_state = STATE_TRANSLATING
                 
@@ -430,6 +457,8 @@ def main():
                 if idx < len(ksl_data):
                     selected_word_idx = idx
                     correct_start_time = None
+                    ksl_thankyou_tap_count = 0
+                    ksl_thankyou_last_touch = False
                     
         elif current_state == STATE_TRANSLATING:
             if key == ord('m') or key == ord('M') or key == 27: # 'M' 또는 ESC
