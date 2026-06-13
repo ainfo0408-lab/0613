@@ -5,8 +5,6 @@ import time
 def main():
     # 1. MediaPipe Hands 초기화
     mp_hands = mp.solutions.hands
-    mp_drawing = mp.solutions.drawing_utils
-    mp_drawing_styles = mp.solutions.drawing_styles
     
     # max_num_hands=2: 최대 두 손까지 인식
     # min_detection_confidence: 감지 신뢰도 임계값
@@ -53,15 +51,33 @@ def main():
         hand_count = 0
         if results.multi_hand_landmarks:
             hand_count = len(results.multi_hand_landmarks)
+            h, w, _ = frame.shape
             for hand_landmarks in results.multi_hand_landmarks:
-                # 관절 포인트와 뼈대 그리기
-                mp_drawing.draw_landmarks(
-                    frame,
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style()
-                )
+                # 랜드마크를 이미지 상의 픽셀 좌표로 변환
+                landmarks_px = []
+                for lm in hand_landmarks.landmark:
+                    cx, cy = int(lm.x * w), int(lm.y * h)
+                    landmarks_px.append((cx, cy))
+
+                # 1. 손바닥 및 손등 부분 그리기 - 파란색 (Blue: 255, 0, 0)
+                palm_connections = [(0, 1), (0, 5), (5, 9), (9, 13), (13, 17), (0, 17)]
+                for start, end in palm_connections:
+                    cv2.line(frame, landmarks_px[start], landmarks_px[end], (255, 0, 0), 3)
+
+                # 2. 손가락 마디(뼈대) 선 그리기 - 초록색 (Green: 0, 255, 0)
+                finger_connections = [
+                    (1, 2), (2, 3), (3, 4),      # 엄지
+                    (5, 6), (6, 7), (7, 8),      # 검지
+                    (9, 10), (10, 11), (11, 12), # 중지
+                    (13, 14), (14, 15), (15, 16),# 약지
+                    (17, 18), (18, 19), (19, 20) # 소지
+                ]
+                for start, end in finger_connections:
+                    cv2.line(frame, landmarks_px[start], landmarks_px[end], (0, 255, 0), 3)
+
+                # 3. 손가락 관절 부분 그리기 - 빨간 점 (Red: 0, 0, 255)
+                for cx, cy in landmarks_px:
+                    cv2.circle(frame, (cx, cy), 6, (0, 0, 255), cv2.FILLED)
 
         # FPS 계산
         curr_time = time.time()
