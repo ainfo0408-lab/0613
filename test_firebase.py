@@ -52,10 +52,10 @@ def fetch_data():
             return
 
         for category, items in categorized_data.items():
-            print(f"📂 카테고리: {category}")
+            print(f"[카테고리: {category}]")
             print("=" * 60)
             for item in items:
-                print(f"  • 단어명: {item['word']} (ID: {item['id']})")
+                print(f"  - 단어명: {item['word']} (ID: {item['id']})")
                 print(f"    - 설명: {item['description']}")
                 print(f"    - 필요 수형: {', '.join(item['hand_signs'])}")
                 print("-" * 60)
