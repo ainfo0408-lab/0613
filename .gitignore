@@ -30,3 +30,6 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Firebase Private Keys
+serviceAccountKey.json
