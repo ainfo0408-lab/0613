@@ -130,21 +130,21 @@ def check_gesture(word_id, multi_hand_landmarks):
     hand_count = len(multi_hand_landmarks)
     
     # 1. 감사합니다 (ksl_thankyou)
-    # 양손이 모두 감지되어야 하고, 양손의 거리(손목 포인트 0번 기준)가 가까워야 하며, 손가락들이 펴진 상태여야 함 (Tapping)
+    # 양손이 모두 감지되어야 하고, 양손의 거리(손바닥 중심 9번 관절 기준)가 가까워야 하며, 손가락들이 펴진 상태여야 함 (Tapping)
     if word_id == "ksl_thankyou":
         if hand_count < 2:
             return False
         h1 = multi_hand_landmarks[0].landmark
         h2 = multi_hand_landmarks[1].landmark
-        # 두 손가락 기저/손목 거리 측정
-        dist = np.sqrt((h1[0].x - h2[0].x)**2 + (h1[0].y - h2[0].y)**2)
+        # 두 손의 중심(9번 관절: 중지 기저) 거리 측정
+        dist = np.sqrt((h1[9].x - h2[9].x)**2 + (h1[9].y - h2[9].y)**2)
         
         t1, i1, m1, r1, p1 = get_finger_states(multi_hand_landmarks[0])
         t2, i2, m2, r2, p2 = get_finger_states(multi_hand_landmarks[1])
         
-        # 양손 다 완전히 웅크린 손이 아니고 펴진 상태이며 거리가 가까울 때
+        # 양손 모두 손가락들이 펼쳐져 있고 두 손의 거리가 가까울 때
         both_open = (i1 and m1) and (i2 and m2)
-        return both_open and dist < 0.22
+        return both_open and dist < 0.35
 
     # 단일 손 판정 규칙 (2개 손 중 하나라도 규칙을 만족하면 정답)
     for hand_landmarks in multi_hand_landmarks:
